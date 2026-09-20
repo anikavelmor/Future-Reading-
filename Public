@@ -1,1 +1,55 @@
-
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dorothy Host</title>
+<style>
+https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Inter:wght@300;400;500;600&display=swap
+*{box-sizing:border-box}body{margin:0;background:#0b0909;color:#eee7db;font-family:Inter,Arial,sans-serif;min-height:100vh}
+.wrap{max-width:800px;margin:auto;padding:42px 20px 80px}.logo{font-family:Cinzel;letter-spacing:.15em;font-size:14px;color:#b99775}.hero{padding:60px 0 35px}.hero h1{font-family:Cinzel;font-size:clamp(40px,9vw,82px);font-weight:400;line-height:1.05;margin:0}.hero p{color:#9f958a;max-width:590px;line-height:1.7}
+.card{background:#151111;border:1px solid #332727;padding:25px;margin-top:22px}.card h2{font-family:Cinzel;font-weight:400;margin:0 0 18px;font-size:18px}
+input{width:100%;background:#0e0c0c;color:#fff;border:1px solid #493938;padding:13px;margin:7px 0 12px;border-radius:2px}input[type=file]{padding:10px}
+button{background:#d9c6ad;color:#160f0d;border:0;padding:13px 18px;font-weight:600;cursor:pointer;margin-top:3px}button:hover{filter:brightness(1.1)}
+.msg{margin-top:16px;font-size:13px;line-height:1.6}.ok{color:#a9d6a7}.err{color:#df9e9e}.site{border-top:1px solid #302727;padding:13px 0;display:flex;justify-content:space-between;gap:15px;align-items:center}.site a{color:#d9c6ad;text-decoration:none}.delete{padding:7px 10px;background:transparent;color:#bd8989;border:1px solid #543636}
+small{color:#786e68;display:block;margin-top:10px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="logo">DOROTHY HOST / STATIC PUBLISHER</div>
+<section class="hero"><h1>Publish your website.</h1><p>Upload a ZIP containing your <b>index.html</b>, and this host publishes it as a live static site. It is designed for projects like Dorothy’s Forbidden Grimoire.</p></section>
+<div class="card">
+<h2>Upload website</h2>
+<form id="form">
+<input name="name" placeholder="Site name, e.g. dorothy-grimoire" required pattern="[A-Za-z0-9 -]+" maxlength="48">
+<input name="password" type="password" placeholder="Host password" required>
+<input name="site" type="file" accept=".zip" required>
+<button>Publish site</button>
+</form>
+<div id="msg" class="msg"></div>
+<small>ZIP limit: 25 MB. Put index.html at the root when possible. Static files only.</small>
+<script>
+<div class="card"><h2>Published sites</h2><div id="sites">Enter your password above to load the site list.</div></div>
+</div>
+<script>
+const form=document.getElementById('form'), msg=document.getElementById('msg'), sites=document.getElementById('sites');
+function esc(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+async function loadSites(pw){
+ const r=await fetch('/api/sites',{headers:{'x-host-password':pw}}); if(!r.ok){sites.textContent='Could not load sites.';return}
+ const data=await r.json(); sites.innerHTML=data.length?data.map(x=>`<div class="site"><a href="${x.url}" target="_blank">${esc(x.slug)}</a><button class="delete" onclick="del('${x.slug}','${encodeURIComponent(pw)}')">Delete</button></div>`).join(''):'No sites yet.';
+}
+form.addEventListener('submit',async e=>{
+ e.preventDefault();msg.textContent='Publishing…';msg.className='msg';
+ const fd=new FormData(form);
+ const r=await fetch('/api/publish',{method:'POST',body:fd}); const d=await r.json();
+ if(!r.ok){msg.textContent=d.error||'Upload failed.';msg.className='msg err';return}
+ msg.innerHTML=`Published: <a style="color:#d9c6ad" href="${d.url}" target="_blank">${d.url}</a>`;msg.className='msg ok';
+ loadSites(form.password.value);
+});
+async function del(slug,pw){
+ const r=await fetch('/api/sites/'+slug,{method:'DELETE',headers:{'x-host-password':decodeURIComponent(pw)}});
+ if(r.ok) loadSites(decodeURIComponent(pw));
+}
+</script>
+</body></html>
